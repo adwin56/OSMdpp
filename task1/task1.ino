@@ -1,99 +1,75 @@
-#define LIGHT1 5
-#define LIGHT2 6
+int LED_PIN[2]={5,6};
 
-String receivedData = "";
+String cmd = "";
 
 void setup() {
-  pinMode(LIGHT1, OUTPUT);
-  pinMode(LIGHT2, OUTPUT);
+  pinMode(LED_PIN[0], OUTPUT);
+  pinMode(LED_PIN[1], OUTPUT);
   Serial.begin(9600);
 }
 
 void loop() {
-  while (Serial.available()) {
-    char incomingByte = Serial.read();
-    if (incomingByte == '#') {
-      handleCommand(receivedData);
-      receivedData = "";
+  if (Serial.available() > 0) {
+    char chr = Serial.read();
+    if (chr == '#') {
+      processCommand(cmd);
+      cmd = "";
     } else {
-      receivedData += incomingByte;
+      cmd += chr;
     }
   }
 }
 
-void handleCommand(String data) {
-  int separatorPos = data.indexOf(';');
-  String action = data.substring(0, separatorPos);
-  String parameters = data.substring(separatorPos + 1);
+void processCommand(String command) {
+  int Del = command.indexOf(';');
+  String commandType = command.substring(0, Del);
+  String args = command.substring(Del + 1);
 
-  if (action == "adjustLevel") {
-    changeLightLevel(parameters);
-  } else if (action == "adjustFractionalLevel") {
-    changeLightLevelFractionally(parameters);
-  } else if (action == "runSequence") {
-    executeSequence(parameters);
+  if (commandType == "setBrightINT") {
+    int Del = args.indexOf(';');
+    int Num = args.substring(0, Del).toInt();
+    int brightness = args.substring(Del + 1).toInt();
+    analogWrite(LED_PIN[Num-1], brightness);
+  } else if (commandType == "setBrightFLOAT") {
+    int Del = args.indexOf(';');
+    int Num = args.substring(0, Del).toInt();
+    float brightness = args.substring(Del + 1).toFloat();
+    int Value = brightness * 255;
+    analogWrite(LED_PIN[Num-1], Value);
+  } else if (commandType == "launchAnimation") {
+    int Del = args.indexOf(';');
+    String animType = args.substring(0, Del);
+    int duration = args.substring(Del + 1).toInt();
+
+    if (animType == "separately") {
+      SeparateAnim(duration);
+    } else if (animType == "together") {
+      TogetherAnim(duration);
+    }
   }
 }
 
-void changeLightLevel(String parameters) {
-  int splitPos = parameters.indexOf(';');
-  int lightId = parameters.substring(0, splitPos).toInt();
-  int intensity = parameters.substring(splitPos + 1).toInt();
-
-  if (lightId == 1) {
-    analogWrite(LIGHT1, intensity);
-  } else if (lightId == 2) {
-    analogWrite(LIGHT2, intensity);
-  }
-}
-
-void changeLightLevelFractionally(String parameters) {
-  int splitPos = parameters.indexOf(';');
-  int lightId = parameters.substring(0, splitPos).toInt();
-  float fraction = parameters.substring(splitPos + 1).toFloat();
-  int pwmValue = fraction * 255;
-
-  if (lightId == 1) {
-    analogWrite(LIGHT1, pwmValue);
-  } else if (lightId == 2) {
-    analogWrite(LIGHT2, pwmValue);
-  }
-}
-
-void executeSequence(String parameters) {
-  int splitPos = parameters.indexOf(';');
-  String sequenceType = parameters.substring(0, splitPos);
-  int sequenceDuration = parameters.substring(splitPos + 1).toInt();
-
-  if (sequenceType == "alternating") {
-    runAlternating(sequenceDuration);
-  } else if (sequenceType == "simultaneous") {
-    runSimultaneous(sequenceDuration);
-  }
-}
-
-void runAlternating(int duration) {
-  int cycles = duration / 500;
-  for (int i = 0; i < cycles; i++) {
-    analogWrite(LIGHT1, 255);
-    analogWrite(LIGHT2, 0);
+void SeparateAnim(int duration) {
+  int halfDuration = duration / 2;
+  for (int i = 0; i < halfDuration / 250; i++) {
+    analogWrite(LED_PIN[0], 255);
+    analogWrite(LED_PIN[1], 0);
     delay(250);
-    analogWrite(LIGHT1, 0);
-    analogWrite(LIGHT2, 255);
+    analogWrite(LED_PIN[0], 0);
+    analogWrite(LED_PIN[1], 255);
     delay(250);
   }
-  analogWrite(LIGHT1, 0);
-  analogWrite(LIGHT2, 0);
+  analogWrite(LED_PIN[0], 0);
+  analogWrite(LED_PIN[1], 0);
 }
 
-void runSimultaneous(int duration) {
-  int cycles = duration / 500;
-  for (int i = 0; i < cycles; i++) {
-    analogWrite(LIGHT1, 255);
-    analogWrite(LIGHT2, 255);
+void TogetherAnim(int duration) {
+  for (int i = 0; i < duration / 500; i++) {
+    analogWrite(LED_PIN[0], 255);
+    analogWrite(LED_PIN[1], 255);
     delay(250);
-    analogWrite(LIGHT1, 0);
-    analogWrite(LIGHT2, 0);
+    analogWrite(LED_PIN[0], 0);
+    analogWrite(LED_PIN[1], 0);
     delay(250);
   }
 }
